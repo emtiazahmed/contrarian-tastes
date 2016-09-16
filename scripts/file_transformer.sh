@@ -1,5 +1,10 @@
 #!/bin/bash
 
+################################
+# This script formats the files for processing by removing the first line movie_id:
+# and adding it to each row in the file as the first column
+################################
+
 OUTPUT_DIR=../training_mod/
 INPUT_FILES=*.txt
 
