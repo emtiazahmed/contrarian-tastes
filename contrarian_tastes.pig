@@ -70,10 +70,12 @@ user_ratings_grouped = GROUP user_ratings BY customer_id;
 average_user_ratings = FOREACH user_ratings_grouped {
 	GENERATE 
 	FLATTEN(group) as customer_id,
-	AVG(user_ratings.rating) as average_rating,
+	AVG(user_ratings.rating) as average_rating
 };
 
-average_user_ratings_ordered = ORDER average_user_ratings BY average_rating DESC, customer_id ASC;
+average_user_ratings_ordered = ORDER average_user_ratings BY average_rating ASC, customer_id ASC;
+
+-- Selecting U users with lowest average rating for M movies
 
 u_users = LIMIT average_user_ratings_ordered $U;
 
@@ -81,6 +83,40 @@ users = FOREACH u_users
 	GENERATE
 	customer_id;
 
+u_ratings = JOIN ratings BY customer_id, users BY customer_id USING 'replicated';
+
+u_ratings = FOREACH u_ratings
+	GENERATE
+	users::customer_id as customer_id,
+	ratings::movie_id as movie_id,
+	ratings::rating as rating,
+	ratings::rating_date as rating_date;
+
+u_ratings = JOIN u_ratings BY movie_id, movie_tites BY movie_id USING 'replicated';
+
+u_ratings = FOREACH u_ratings
+	GENERATE
+	u_ratings::customer_id as customer_id,
+	u_ratings::movie_id as movie_id,
+	u_ratings::rating as rating,
+	u_ratings::rating_date as rating_date,
+	movie_titles::year as year,
+	movie_titles::title as title;
+
+
+u_ratings_grouped = GROUP u_ratings BY customer_id;
+
+contrarian_movies = FOREACH u_ratings_grouped {
+	ordered = ORDER u_ratings BY rating DESC, year DESC, title ASC;
+	highest_ranked = LIMIT ordered 1; 
+	GENERATE
+	FLATTEN(group) as customer_id,
+	highest_ranked::title as title,
+	highest_ranked::year as year,
+	highest_ranked::rating_date as rating_date
+};
+
+STORE contrarian_movies INTO '/user/imtiaz/netflix/data/contrarian' USING PigStorage(',');
 
 
 
